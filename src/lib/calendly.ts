@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { appointments, followups, leads } from '@/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
+import { getSetting } from './settings';
 
 const API = 'https://api.calendly.com';
 
@@ -92,7 +93,7 @@ function completePendingFollowups(leadId: number) {
 }
 
 export async function syncCalendlyRecent(): Promise<{ upserted: number; matchedLeads: number }> {
-  const token = process.env.CALENDLY_TOKEN;
+  const token = getSetting('calendly_token') || process.env.CALENDLY_TOKEN;
   if (!token) return { upserted: 0, matchedLeads: 0 };
 
   const headers = { Authorization: `Bearer ${token}` } as const;
