@@ -44,10 +44,17 @@ export default function LoginPage() {
       });
       if (loginRes.ok) {
         window.location.href = '/dashboard';
+      } else {
+        const loginData = await loginRes.json().catch(() => ({}));
+        setError(loginData?.error || 'Account created but login failed. Try signing in.');
       }
     } else {
       const data = await res.json().catch(() => ({}));
-      setError(data?.error || 'Failed to create account');
+      if (data?.error === 'Already seeded') {
+        setError('An account already exists. Please sign in instead.');
+      } else {
+        setError(data?.error || 'Failed to create account. ' + (data?.message || ''));
+      }
     }
     setIsCreating(false);
   };
