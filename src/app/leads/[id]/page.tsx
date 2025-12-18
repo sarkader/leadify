@@ -9,8 +9,8 @@ export default async function LeadDetail({ params }: { params: { id: string } })
 
   const lead = db.select().from(leads).where(eq(leads.id, Number(params.id))).get();
   if (!lead) return <div className="p-6">Lead not found</div>;
-  const acts = db.select().from(activities).where(eq(activities.leadId, lead.id!)).orderBy(desc(activities.timestamp)).all();
-  const appts = db.select().from(appointments).where(eq(appointments.leadId, lead.id!)).all();
+  const acts: Array<typeof activities.$inferSelect> = db.select().from(activities).where(eq(activities.leadId, lead.id!)).orderBy(desc(activities.timestamp)).all();
+  const appts: Array<typeof appointments.$inferSelect> = db.select().from(appointments).where(eq(appointments.leadId, lead.id!)).all();
 
   return (
     <div className="p-6 space-y-6">
