@@ -6,6 +6,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +26,32 @@ export default function LoginPage() {
     setLoading(false);
   };
 
+  const onCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    setError(null);
+    const res = await fetch('/api/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (res.ok) {
+      // Auto-login after creating account
+      const loginRes = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (loginRes.ok) {
+        window.location.href = '/dashboard';
+      }
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error || 'Failed to create account');
+    }
+    setIsCreating(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 card p-6">
@@ -41,7 +68,10 @@ export default function LoginPage() {
           <input type="password" className="w-full border border-slate-200 rounded-md p-2 bg-white" value={password} onChange={e=>setPassword(e.target.value)} required />
         </div>
         {error && <div className="text-red-600 text-sm">{error}</div>}
-        <button disabled={loading} className="btn btn-primary w-full disabled:opacity-50">{loading? 'Signing in…':'Sign in'}</button>
+        <div className="space-y-2">
+          <button disabled={loading || isCreating} type="submit" className="btn btn-primary w-full disabled:opacity-50">{loading? 'Signing in…':'Sign in'}</button>
+          <button disabled={loading || isCreating} onClick={onCreateAccount} type="button" className="btn btn-secondary w-full disabled:opacity-50 text-sm">{isCreating? 'Creating…':'Create First Account'}</button>
+        </div>
       </form>
     </div>
   );
