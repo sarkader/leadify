@@ -25,21 +25,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50`}>
-        <header className="border-b bg-white">
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-6">
-            <Link href="/dashboard" className="font-semibold">Setter</Link>
-            <nav className="flex items-center gap-4 text-sm text-slate-700">
-              <Link href="/leads" className="hover:underline">Leads</Link>
-              <Link href="/inbox" className="hover:underline">Inbox</Link>
-              <Link href="/calendar" className="hover:underline">Calendar</Link>
+            <Link href="/dashboard" className="font-semibold tracking-tight">Leadify</Link>
+            <nav className="flex items-center gap-1 text-sm">
+              <Link href="/leads" className="btn btn-ghost px-3 py-1.5">Leads</Link>
+              <Link href="/inbox" className="btn btn-ghost px-3 py-1.5">Inbox</Link>
+              <Link href="/calendar" className="btn btn-ghost px-3 py-1.5">Calendar</Link>
+              <Link href="/admin" className="btn btn-ghost px-3 py-1.5">Admin</Link>
             </nav>
-            <div className="ml-auto text-sm">
-              <form action="/api/logout" method="post"><button className="underline">Logout</button></form>
+            <div className="ml-auto">
+              <form action="/api/logout" method="post">
+                <button className="btn" type="submit">Logout</button>
+              </form>
             </div>
           </div>
         </header>
-        <main className="max-w-6xl mx-auto px-4 py-6">
+        <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
           {children}
         </main>
       </body>

@@ -22,17 +22,24 @@ export default async function CalendarPage() {
   const days = Object.keys(groups).sort();
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Calendar</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
+        <div className="text-sm text-slate-600">Upcoming scheduled meetings pulled from Calendly.</div>
+      </div>
       <div className="grid md:grid-cols-2 gap-4">
         {days.map(day => (
-          <div key={day} className="border rounded bg-white">
-            <div className="px-3 py-2 border-b font-medium bg-slate-50">{day}</div>
+          <div key={day} className="card overflow-hidden">
+            <div className="px-4 py-2 border-b border-slate-200 font-medium bg-slate-50">{day}</div>
             <ul className="divide-y">
               {groups[day].map(({ a, l }) => (
                 <li key={a.id} className="p-3 text-sm">
                   <div className="font-medium">{l?.name || 'Lead'} {a.closerName? `· ${a.closerName}`:''}</div>
-                  <div className="text-slate-600">{a.start? new Date(a.start).toLocaleTimeString(): 'Time TBA'} · {a.status}</div>
+                  <div className="text-slate-600 flex items-center gap-2">
+                    <span>{a.start? new Date(a.start).toLocaleTimeString(): 'Time TBA'}</span>
+                    <span className="text-slate-300">·</span>
+                    <span className="badge">{a.status}</span>
+                  </div>
                 </li>
               ))}
             </ul>
