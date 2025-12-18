@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { leads } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { getSession } from '@/lib/auth';
 
 const BASE = 'https://api.close.com/api/v1';
 
@@ -12,6 +14,9 @@ async function fetchJSON(url: string, init?: RequestInit) {
 }
 
 export async function POST() {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const apiKey = process.env.CLOSE_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'Missing CLOSE_API_KEY' }, { status: 400 });
   let next: string | null = `${BASE}/lead/?_fields=id,display_name,emails,phones,timezone,source`;
@@ -21,14 +26,28 @@ export async function POST() {
     const data = await fetchJSON(next, { headers: { Authorization: `Bearer ${apiKey}` } });
     const results = data?.data || data?.results || [];
     for (const r of results) {
-      const email = Array.isArray(r.emails) && r.emails[0]?.email ? r.emails[0].email : null;
+      const externalId = typeof r?.id === 'string' ? r.id : null;
+      const emailRaw = Array.isArray(r.emails) && r.emails[0]?.email ? r.emails[0].email : null;
+      const email = typeof emailRaw === 'string' && emailRaw.trim() ? emailRaw.trim().toLowerCase() : null;
       const phone = Array.isArray(r.phones) && r.phones[0]?.phone ? r.phones[0].phone : null;
       const name = r.display_name || 'Lead';
-      const existing = email ? db.select().from(leads).where(leads.email.equals(email) as any).get() : null;
+      const existing =
+        (externalId ? db.select().from(leads).where(eq(leads.externalId, externalId)).get() : null) ??
+        (email ? db.select().from(leads).where(eq(leads.email, email)).get() : null);
       if (existing) {
-        db.update(leads).set({ name, phone, timezone: r.timezone || null, source: r.source || 'close' }).where(leads.id.equals(existing.id!) as any).run();
+        db.update(leads)
+          .set({
+            externalId: externalId ?? existing.externalId,
+            name,
+            phone,
+            email: email ?? existing.email,
+            timezone: r.timezone || null,
+            source: r.source || 'close',
+          })
+          .where(eq(leads.id, existing.id!))
+          .run();
       } else {
-        db.insert(leads).values({ name, email, phone, timezone: r.timezone || null, source: 'close' }).run();
+        db.insert(leads).values({ externalId, name, email, phone, timezone: r.timezone || null, source: 'close' }).run();
       }
       imported++;
     }
