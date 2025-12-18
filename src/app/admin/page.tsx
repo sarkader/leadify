@@ -5,6 +5,8 @@ export default function AdminPage() {
   const [calendlyToken, setCalendlyToken] = useState('');
   const [closeApiKey, setCloseApiKey] = useState('');
   const [googleClientId, setGoogleClientId] = useState('');
+  const [googleClientSecret, setGoogleClientSecret] = useState('');
+  const [googleConnected, setGoogleConnected] = useState(false);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -16,8 +18,22 @@ export default function AdminPage() {
         if (data.calendlyToken) setCalendlyToken(data.calendlyToken);
         if (data.closeApiKey) setCloseApiKey(data.closeApiKey);
         if (data.googleClientId) setGoogleClientId(data.googleClientId);
+        if (data.googleClientSecret) setGoogleClientSecret(data.googleClientSecret);
+        if (data.googleConnected) setGoogleConnected(data.googleConnected);
       })
       .catch(() => {});
+
+    // Check URL params for OAuth callback messages
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('google_connected') === '1') {
+      setMessage({ type: 'success', text: 'Google Calendar connected successfully!' });
+      setGoogleConnected(true);
+      window.history.replaceState({}, '', '/admin');
+    }
+    if (params.get('google_error')) {
+      setMessage({ type: 'error', text: `Google connection failed: ${params.get('google_error')}` });
+      window.history.replaceState({}, '', '/admin');
+    }
   }, []);
 
   const saveSettings = async () => {
@@ -27,7 +43,7 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ calendlyToken, closeApiKey, googleClientId }),
+        body: JSON.stringify({ calendlyToken, closeApiKey, googleClientId, googleClientSecret }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -105,7 +121,7 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Google Calendar Client ID (Optional)</label>
+            <label className="block text-sm font-medium mb-1">Google Calendar Client ID</label>
             <input
               type="text"
               className="w-full border border-slate-200 rounded-md p-2 bg-white"
@@ -114,9 +130,29 @@ export default function AdminPage() {
               placeholder="Enter Google OAuth Client ID"
             />
             <div className="text-xs text-slate-500 mt-1">
-              For Google Calendar integration (coming soon)
+              From Google Cloud Console → APIs & Services → Credentials
             </div>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Google Calendar Client Secret</label>
+            <input
+              type="password"
+              className="w-full border border-slate-200 rounded-md p-2 bg-white"
+              value={googleClientSecret}
+              onChange={e => setGoogleClientSecret(e.target.value)}
+              placeholder="Enter Google OAuth Client Secret"
+            />
+            <div className="text-xs text-slate-500 mt-1">
+              From Google Cloud Console → APIs & Services → Credentials
+            </div>
+          </div>
+
+          {googleConnected && (
+            <div className="p-3 bg-green-50 text-green-800 rounded-md text-sm">
+              ✓ Google Calendar is connected
+            </div>
+          )}
 
           <button
             onClick={saveSettings}
@@ -156,11 +192,25 @@ export default function AdminPage() {
           </button>
 
           <button
-            onClick={() => runAction('connect-google')}
-            disabled={loading['connect-google']}
+            onClick={() => {
+              if (googleClientId && googleClientSecret) {
+                window.location.href = '/api/admin/connect-google';
+              } else {
+                setMessage({ type: 'error', text: 'Please save Google Client ID and Secret first' });
+              }
+            }}
+            disabled={loading['connect-google'] || !googleClientId || !googleClientSecret}
             className="btn btn-secondary"
           >
-            {loading['connect-google'] ? 'Connecting...' : 'Connect Google Calendar'}
+            {loading['connect-google'] ? 'Connecting...' : googleConnected ? 'Reconnect Google Calendar' : 'Connect Google Calendar'}
+          </button>
+
+          <button
+            onClick={() => runAction('sync-google')}
+            disabled={loading['sync-google'] || !googleConnected}
+            className="btn btn-secondary"
+          >
+            {loading['sync-google'] ? 'Syncing...' : 'Sync Google Calendar'}
           </button>
         </div>
         <div className="text-sm text-slate-600">

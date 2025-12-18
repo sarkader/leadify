@@ -6,10 +6,14 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const googleConnected = !!(getSetting('google_access_token') || getSetting('google_refresh_token'));
+
   return NextResponse.json({
     calendlyToken: getSetting('calendly_token') || process.env.CALENDLY_TOKEN || '',
     closeApiKey: getSetting('close_api_key') || process.env.CLOSE_API_KEY || '',
     googleClientId: getSetting('google_client_id') || process.env.GOOGLE_CLIENT_ID || '',
+    googleClientSecret: getSetting('google_client_secret') || process.env.GOOGLE_CLIENT_SECRET || '',
+    googleConnected,
   });
 }
 
@@ -17,11 +21,12 @@ export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { calendlyToken, closeApiKey, googleClientId } = await req.json();
+  const { calendlyToken, closeApiKey, googleClientId, googleClientSecret } = await req.json();
 
   if (calendlyToken) setSetting('calendly_token', calendlyToken);
   if (closeApiKey) setSetting('close_api_key', closeApiKey);
   if (googleClientId) setSetting('google_client_id', googleClientId);
+  if (googleClientSecret) setSetting('google_client_secret', googleClientSecret);
 
   return NextResponse.json({ ok: true, message: 'Settings saved' });
 }
