@@ -4,6 +4,7 @@ import { leads, appointments } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getSetting } from '@/lib/settings';
 import crypto from 'node:crypto';
+import { syncCalendlyRecent } from '@/lib/calendly';
 
 function verifySignature(body: string, signatureHeader: string | null, key: string) {
   if (!signatureHeader) return false;
@@ -35,19 +36,27 @@ export async function POST(req: NextRequest) {
   if (!eventType || !payload) return NextResponse.json({ ok: true });
 
   if (eventType === 'invitee.created') {
-    const name: string = payload?.invitee?.name || 'Unknown';
-    const email: string | undefined = payload?.invitee?.email;
-    const start = payload?.event?.start_time ? Date.parse(payload.event.start_time) : undefined;
-    const calendlyId: string = payload?.invitee?.uri || payload?.event?.uri || '';
-
-    let lead = email ? db.select().from(leads).where(eq(leads.email, email)).get() : null;
-    if (!lead) {
-      const res = db.insert(leads).values({ name, email: email || null, source: 'calendly', stage: 'Set' }).run();
-      lead = db.select().from(leads).where(eq(leads.id, Number(res.lastInsertRowid))).get();
+    if (process.env.CALENDLY_TOKEN) {
+      // Reconcile via API pull so we can match + auto-complete followups reliably.
+      try {
+        await syncCalendlyRecent();
+      } catch {}
     } else {
-      db.update(leads).set({ stage: 'Set' }).where(eq(leads.id, lead.id!)).run();
+      // Fallback: minimal insert based on webhook payload only.
+      const name: string = payload?.invitee?.name || 'Unknown';
+      const email: string | undefined = payload?.invitee?.email;
+      const start = payload?.event?.start_time ? Date.parse(payload.event.start_time) : undefined;
+      const calendlyId: string = payload?.invitee?.uri || payload?.event?.uri || '';
+
+      let lead = email ? db.select().from(leads).where(eq(leads.email, email)).get() : null;
+      if (!lead) {
+        const res = db.insert(leads).values({ name, email: email || null, source: 'calendly', stage: 'Set' }).run();
+        lead = db.select().from(leads).where(eq(leads.id, Number(res.lastInsertRowid))).get();
+      } else {
+        db.update(leads).set({ stage: 'Set' }).where(eq(leads.id, lead.id!)).run();
+      }
+      db.insert(appointments).values({ leadId: lead?.id, calendlyId, start: start ? Math.floor(start) : null, status: 'Scheduled' }).run();
     }
-    db.insert(appointments).values({ leadId: lead?.id, calendlyId, start: start ? Math.floor(start) : null, status: 'Scheduled' }).run();
   }
 
   if (eventType === 'invitee.canceled') {
