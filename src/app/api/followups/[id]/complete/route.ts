@@ -3,7 +3,8 @@ import { db } from '@/db';
 import { followups } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  db.update(followups).set({ status: 'done' }).where(eq(followups.id, Number(params.id))).run();
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  db.update(followups).set({ status: 'done' }).where(eq(followups.id, Number(id))).run();
   return NextResponse.redirect(new URL('/inbox', req.url));
 }

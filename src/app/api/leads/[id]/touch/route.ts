@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { leads, activities, followups, appointments } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { syncCalendlyRecent } from '@/lib/calendly';
 
 function addDays(ms: number, days: number) { return ms + days * 24 * 60 * 60 * 1000; }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const id = Number(params.id);
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: idStr } = await context.params;
+  const id = Number(idStr);
   const body = await req.json().catch(()=>({}));
   const type: 'wa' | 'email' | 'call' = body.type || 'wa';
   const followupDays: number = Number(body.followupDays ?? 1);
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Try to sync Calendly just-in-time to see if they already booked
   try {
-    await fetch(`${process.env.APP_BASE_URL || 'http://localhost:3000'}/api/integrations/calendly/pull`, { method: 'POST' });
+    await syncCalendlyRecent();
   } catch {}
 
   const appt = db.select().from(appointments).where(eq(appointments.leadId, id)).orderBy(desc(appointments.start)).get();
