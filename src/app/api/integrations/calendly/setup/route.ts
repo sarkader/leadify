@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { getSetting, setSetting } from '@/lib/settings';
+import { getSession } from '@/lib/auth';
 
 const CALENDLY_API = 'https://api.calendly.com';
 
 export async function POST() {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const token = process.env.CALENDLY_TOKEN;
   const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
   if (!token) return NextResponse.json({ error: 'CALENDLY_TOKEN missing' }, { status: 400 });
